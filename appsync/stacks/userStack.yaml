@@ -103,3 +103,23 @@ Resources:
       DataSourceName: !GetAtt UsersDataSource.Name
       Runtime: *ResolverRuntime
       Code: *ResolverCode
+
+  GetMeResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Query
+      FieldName: getMe
+      DataSourceName: !GetAtt UsersDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  UpdateMyProfileResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: updateMyProfile
+      DataSourceName: !GetAtt UsersDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode

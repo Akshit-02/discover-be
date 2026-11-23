@@ -38,6 +38,9 @@ Parameters:
     Type: String
     NoEcho: true
     Description: Neon Postgres connection string
+  UserListsTableName:
+    Type: String
+    Description: Name of the user lists DynamoDB table
 
 Resources:
   AppSyncLambdaInvokeRole:
@@ -103,6 +106,24 @@ Resources:
         UtilsLayer: !Ref UtilsLayer
         PostgresLayer: !Ref PostgresLayer
         NeonDatabaseUrl: !Ref NeonDatabaseUrl
+
+  ListStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: GraphQLAPISchema
+    Properties:
+      TemplateURL: ./stacks/listStack.yaml
+      Parameters:
+        StackName: !Ref StackName
+        LogLevel: !Ref LogLevel
+        AppSyncLambdaInvokeRoleArn: !GetAtt AppSyncLambdaInvokeRole.Arn
+        GraphQLAPI: !GetAtt GraphQLAPI.ApiId
+        LambdaRoleArn: !Ref LambdaRoleArn
+        CommonLambdaLayer: !Ref CommonLambdaLayer
+        DynamoDBLayer: !Ref DynamoDBLayer
+        UtilsLayer: !Ref UtilsLayer
+        PostgresLayer: !Ref PostgresLayer
+        NeonDatabaseUrl: !Ref NeonDatabaseUrl
+        UserListsTableName: !Ref UserListsTableName
 
 Outputs:
   GraphQLApiId:

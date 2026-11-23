@@ -1,0 +1,33 @@
+type UserList @aws_cognito_user_pools {
+  id: ID!
+  name: String!
+  description: String
+  creatorCount: Int!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+input CreateUserListInput {
+  name: String!
+  description: String
+}
+
+input UpdateUserListInput {
+  name: String
+  description: String
+}
+
+type Query {
+  listMyLists: [UserList!]! @aws_cognito_user_pools
+  getUserList(id: ID!): UserList @aws_cognito_user_pools
+  listCreatorsInList(listId: ID!, limit: Int, nextToken: String): CreatorConnection! @aws_cognito_user_pools
+  getCreatorListIds(creatorId: ID!): [ID!]! @aws_cognito_user_pools
+}
+
+type Mutation {
+  createUserList(input: CreateUserListInput!): UserList! @aws_cognito_user_pools
+  updateUserList(id: ID!, input: UpdateUserListInput!): UserList! @aws_cognito_user_pools
+  deleteUserList(id: ID!): Boolean! @aws_cognito_user_pools
+  addCreatorToList(listId: ID!, creatorId: ID!): UserList! @aws_cognito_user_pools
+  removeCreatorFromList(listId: ID!, creatorId: ID!): UserList! @aws_cognito_user_pools
+}

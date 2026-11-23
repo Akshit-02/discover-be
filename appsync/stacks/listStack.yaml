@@ -1,0 +1,192 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: User List Stack for Influencer Discovery
+
+Parameters:
+  StackName:
+    Type: String
+    Default: influencer-discovery
+  LogLevel:
+    Type: String
+    Default: INFO
+  AppSyncLambdaInvokeRoleArn:
+    Type: String
+  GraphQLAPI:
+    Type: String
+  LambdaRoleArn:
+    Type: String
+  CommonLambdaLayer:
+    Type: String
+  DynamoDBLayer:
+    Type: String
+  UtilsLayer:
+    Type: String
+  PostgresLayer:
+    Type: String
+  NeonDatabaseUrl:
+    Type: String
+    NoEcho: true
+  UserListsTableName:
+    Type: String
+
+# Define reusables with anchors
+Metadata:
+  ResolverRuntime: &ResolverRuntime
+    Name: APPSYNC_JS
+    RuntimeVersion: 1.0.0
+  ResolverCode: &ResolverCode |
+    import { util } from "@aws-appsync/utils";
+
+    export function request(ctx) {
+      return {
+        operation: "Invoke",
+        payload: {
+          arguments: ctx.args,
+          source: ctx.source,
+          identity: ctx.identity,
+          fieldName: ctx.info.fieldName,
+        },
+      };
+    }
+
+    export function response(ctx) {
+      if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+      return ctx.result;
+    }
+
+Globals:
+  Function:
+    Timeout: 30
+    LoggingConfig:
+      LogFormat: JSON
+      ApplicationLogLevel: INFO
+      SystemLogLevel: WARN
+
+Resources:
+  ListsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${StackName}-lists"
+      RetentionInDays: 3
+
+  ListsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ListsFunctionLogGroup
+    Properties:
+      FunctionName: !Sub "${StackName}-lists"
+      CodeUri: ../handlers/lists
+      Handler: index.handler
+      Role: !Ref LambdaRoleArn
+      Runtime: nodejs22.x
+      MemorySize: 256
+      Layers:
+        - !Ref CommonLambdaLayer
+        - !Ref DynamoDBLayer
+        - !Ref UtilsLayer
+        - !Ref PostgresLayer
+      Environment:
+        Variables:
+          LOG_LEVEL: !Ref LogLevel
+          STACK_NAME: !Ref StackName
+          USER_LISTS_TABLE: !Ref UserListsTableName
+          DATABASE_URL: !Ref NeonDatabaseUrl
+
+  ListsDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      Name: ListsDataSource
+      Type: AWS_LAMBDA
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt ListsFunction.Arn
+      ServiceRoleArn: !Ref AppSyncLambdaInvokeRoleArn
+
+  ListMyListsResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Query
+      FieldName: listMyLists
+      DataSourceName: !GetAtt ListsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  GetUserListResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Query
+      FieldName: getUserList
+      DataSourceName: !GetAtt ListsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  ListCreatorsInListResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Query
+      FieldName: listCreatorsInList
+      DataSourceName: !GetAtt ListsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  GetCreatorListIdsResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Query
+      FieldName: getCreatorListIds
+      DataSourceName: !GetAtt ListsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  CreateUserListResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: createUserList
+      DataSourceName: !GetAtt ListsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  UpdateUserListResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: updateUserList
+      DataSourceName: !GetAtt ListsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  DeleteUserListResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: deleteUserList
+      DataSourceName: !GetAtt ListsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  AddCreatorToListResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: addCreatorToList
+      DataSourceName: !GetAtt ListsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  RemoveCreatorFromListResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: removeCreatorFromList
+      DataSourceName: !GetAtt ListsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode

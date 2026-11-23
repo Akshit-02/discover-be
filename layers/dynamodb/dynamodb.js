@@ -9,6 +9,7 @@ import {
   QueryCommand,
   BatchWriteCommand,
   BatchGetCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 
 let dbClient;
@@ -221,6 +222,16 @@ export const genericIncrement = async ({
     }),
   );
   return result.Attributes;
+};
+
+/**
+ * Runs raw TransactWriteItems entries (`{ Put }` / `{ Update }` / `{ Delete }` / `{ ConditionCheck }`)
+ * atomically. Throws TransactionCanceledException with `CancellationReasons` when a condition fails.
+ */
+export const genericTransactWrite = async ({ items }) => {
+  const db = getDynamoClient();
+  await db.send(new TransactWriteCommand({ TransactItems: items }));
+  return true;
 };
 
 export const genericDelete = async ({ tableName, key }) => {

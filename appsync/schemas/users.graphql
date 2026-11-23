@@ -2,10 +2,39 @@ type Users @aws_cognito_user_pools {
   id: ID!
   email: String!
   name: String
+  phone: String
+  jobTitle: String
+  companyName: String
+  companyWebsite: String
+  industry: String
+  companySize: String
+  monthlyBudget: String
+  city: String
+  country: String
+  marketingOptIn: Boolean
   createdAt: AWSDateTime
   updatedAt: AWSDateTime
 }
 
+input UpdateProfileInput {
+  name: String!
+  phone: String
+  jobTitle: String
+  companyName: String
+  companyWebsite: String
+  industry: String
+  companySize: String
+  monthlyBudget: String
+  city: String
+  country: String
+  marketingOptIn: Boolean
+}
+
 type Query {
   getUserById(id: ID!): Users @aws_cognito_user_pools
+  getMe: Users @aws_cognito_user_pools
+}
+
+type Mutation {
+  updateMyProfile(input: UpdateProfileInput!): Users! @aws_cognito_user_pools
 }

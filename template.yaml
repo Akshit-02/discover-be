@@ -91,6 +91,7 @@ Resources:
         UsersTableName: !GetAtt DynamoDB.Outputs.UsersTableName
         PostgresLayer: !GetAtt LambdaLayers.Outputs.PostgresLayer
         NeonDatabaseUrl: !Ref NeonDatabaseUrl
+        UserListsTableName: !GetAtt DynamoDB.Outputs.UserListsTableName
 
 Outputs:
   UserPoolId:
@@ -101,3 +102,5 @@ Outputs:
     Value: !GetAtt AppSync.Outputs.GraphQLApiUrl
   UsersTableName:
     Value: !GetAtt DynamoDB.Outputs.UsersTableName
+  UserListsTableName:
+    Value: !GetAtt DynamoDB.Outputs.UserListsTableName
