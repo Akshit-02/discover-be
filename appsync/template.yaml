@@ -31,6 +31,13 @@ Parameters:
   UsersTableName:
     Type: String
     Description: Name of the users DynamoDB table
+  PostgresLayer:
+    Type: String
+    Description: Postgres Lambda layer ARN
+  NeonDatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: Neon Postgres connection string
 
 Resources:
   AppSyncLambdaInvokeRole:
@@ -81,6 +88,21 @@ Resources:
         DynamoDBLayer: !Ref DynamoDBLayer
         UtilsLayer: !Ref UtilsLayer
         UsersTableName: !Ref UsersTableName
+
+  CreatorStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: GraphQLAPISchema
+    Properties:
+      TemplateURL: ./stacks/creatorStack.yaml
+      Parameters:
+        StackName: !Ref StackName
+        LogLevel: !Ref LogLevel
+        AppSyncLambdaInvokeRoleArn: !GetAtt AppSyncLambdaInvokeRole.Arn
+        GraphQLAPI: !GetAtt GraphQLAPI.ApiId
+        LambdaRoleArn: !Ref LambdaRoleArn
+        UtilsLayer: !Ref UtilsLayer
+        PostgresLayer: !Ref PostgresLayer
+        NeonDatabaseUrl: !Ref NeonDatabaseUrl
 
 Outputs:
   GraphQLApiId:

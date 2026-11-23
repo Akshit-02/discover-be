@@ -22,6 +22,10 @@ Parameters:
     Type: String
     Default: INFO
     Description: Log level for Lambda functions
+  NeonDatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: Neon Postgres connection string
 
 Resources:
   LambdaRole:
@@ -85,6 +89,8 @@ Resources:
         DynamoDBLayer: !GetAtt LambdaLayers.Outputs.DynamoDBLayer
         UtilsLayer: !GetAtt LambdaLayers.Outputs.UtilsLayer
         UsersTableName: !GetAtt DynamoDB.Outputs.UsersTableName
+        PostgresLayer: !GetAtt LambdaLayers.Outputs.PostgresLayer
+        NeonDatabaseUrl: !Ref NeonDatabaseUrl
 
 Outputs:
   UserPoolId:

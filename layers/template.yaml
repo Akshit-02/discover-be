@@ -47,6 +47,19 @@ Resources:
     Metadata:
       BuildMethod: nodejs22.x
 
+  PostgresLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${StackName}-postgres-layer"
+      Description: Neon Postgres
+      ContentUri: postgres
+      CompatibleRuntimes:
+        - nodejs22.x
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs22.x
+
 Outputs:
   CommonLambdaLayer:
     Value: !Ref CommonLambdaLayer
@@ -54,3 +67,5 @@ Outputs:
     Value: !Ref DynamoDBLayer
   UtilsLayer:
     Value: !Ref UtilsLayer
+  PostgresLayer:
+    Value: !Ref PostgresLayer

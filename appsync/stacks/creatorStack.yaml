@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Creator Stack for Influencer Discovery
+
+Parameters:
+  StackName:
+    Type: String
+    Default: influencer-discovery
+  LogLevel:
+    Type: String
+    Default: INFO
+  AppSyncLambdaInvokeRoleArn:
+    Type: String
+  GraphQLAPI:
+    Type: String
+  LambdaRoleArn:
+    Type: String
+  UtilsLayer:
+    Type: String
+  PostgresLayer:
+    Type: String
+  NeonDatabaseUrl:
+    Type: String
+    NoEcho: true
+
+# Define reusables with anchors
+Metadata:
+  ResolverRuntime: &ResolverRuntime
+    Name: APPSYNC_JS
+    RuntimeVersion: 1.0.0
+  ResolverCode: &ResolverCode |
+    import { util } from "@aws-appsync/utils";
+
+    export function request(ctx) {
+      return {
+        operation: "Invoke",
+        payload: {
+          arguments: ctx.args,
+          source: ctx.source,
+          identity: ctx.identity,
+          fieldName: ctx.info.fieldName,
+        },
+      };
+    }
+
+    export function response(ctx) {
+      if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+      return ctx.result;
+    }
+
+Globals:
+  Function:
+    Timeout: 30
+    LoggingConfig:
+      LogFormat: JSON
+      ApplicationLogLevel: INFO
+      SystemLogLevel: WARN
+
+Resources:
+  CreatorsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${StackName}-creators"
+      RetentionInDays: 3
+
+  CreatorsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: CreatorsFunctionLogGroup
+    Properties:
+      FunctionName: !Sub "${StackName}-creators"
+      CodeUri: ../handlers/creators
+      Handler: index.handler
+      Role: !Ref LambdaRoleArn
+      Runtime: nodejs22.x
+      MemorySize: 256
+      Layers:
+        - !Ref PostgresLayer
+        - !Ref UtilsLayer
+      Environment:
+        Variables:
+          LOG_LEVEL: !Ref LogLevel
+          STACK_NAME: !Ref StackName
+          DATABASE_URL: !Ref NeonDatabaseUrl
+
+  CreatorsDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      Name: CreatorsDataSource
+      Type: AWS_LAMBDA
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt CreatorsFunction.Arn
+      ServiceRoleArn: !Ref AppSyncLambdaInvokeRoleArn
+
+  ListCreatorsResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Query
+      FieldName: listCreators
+      DataSourceName: !GetAtt CreatorsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode

@@ -1,0 +1,40 @@
+type Creator @aws_cognito_user_pools {
+  id: ID!
+  name: String
+  username: String!
+  email: String
+  phone: String
+  followers: Int
+  following: Int
+  totalPosts: Int
+  avgLikes: Int
+  avgViews: Int
+  avgComments: Int
+  avgEngagementRate: Float
+  postingFrequency: Int
+  gender: String
+  city: String
+  state: String
+  country: String
+  niches: [String]
+  languages: [String]
+  isVerified: Boolean
+  collaborationTypes: [String]
+  currency: Int
+  reelPrice: Int
+  storyPrice: Int
+  shortVideoPrice: Int
+  longVideoPrice: Int
+  mid: String
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type CreatorConnection @aws_cognito_user_pools {
+  items: [Creator!]!
+  nextToken: String
+}
+
+type Query {
+  listCreators(limit: Int, nextToken: String): CreatorConnection! @aws_cognito_user_pools
+}

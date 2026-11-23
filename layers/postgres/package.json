@@ -1,0 +1,10 @@
+{
+  "name": "postgres",
+  "version": "1.0.0",
+  "main": "postgres.js",
+  "type": "module",
+  "license": "ISC",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0"
+  }
+}
