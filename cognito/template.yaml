@@ -86,6 +86,10 @@ Resources:
         - email
       UsernameConfiguration:
         CaseSensitive: false
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailSubject: "Your Kudozz verification code"
+        EmailMessage: "Your Kudozz Influencer Discovery verification code is {####}. It expires in 24 hours. If you didn't request this, you can ignore this email."
       AccountRecoverySetting:
         RecoveryMechanisms:
           - Name: verified_email
