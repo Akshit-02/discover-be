@@ -2,11 +2,18 @@
   "name": "influencer-discovery-be",
   "private": true,
   "scripts": {
-    "merge-schemas": "node mergeSchemas.js"
+    "merge-schemas": "node mergeSchemas.js",
+    "import:creators": "node --env-file-if-exists=.env.master scripts/importCreators.mjs",
+    "db:migrate": "node --env-file-if-exists=.env.master scripts/migrate.mjs"
   },
   "dependencies": {
     "@graphql-tools/load-files": "^7.0.0",
     "@graphql-tools/merge": "^9.0.17",
-    "graphql": "^16.10.0"
+    "graphql": "^16.10.0",
+    "uuid": "^14.0.3"
+  },
+  "devDependencies": {
+    "@neondatabase/serverless": "^1.2.1",
+    "csv-parse": "^5.6.0"
   }
 }

@@ -35,8 +35,82 @@ type CreatorConnection @aws_cognito_user_pools {
   nextToken: String
 }
 
+enum CreatorSort {
+  FOLLOWERS_DESC
+  FOLLOWERS_ASC
+  ENGAGEMENT_DESC
+  VIEWS_DESC
+  LIKES_DESC
+  REEL_PRICE_ASC
+  NEWEST
+}
+
+enum CreatorGender {
+  MALE
+  FEMALE
+  OTHER
+  UNKNOWN
+}
+
+input IntRangeInput {
+  min: Int
+  max: Int
+}
+
+input CreatorFilterInput {
+  "Matches name, @username or city (case-insensitive, partial)."
+  search: String
+  "Niche slugs, e.g. fashion-lifestyle. Matches creators with any of them."
+  niches: [String!]
+  countries: [String!]
+  states: [String!]
+  cities: [String!]
+  languages: [String!]
+  genders: [CreatorGender!]
+  "Follower ranges (min inclusive, max exclusive), OR-ed together."
+  followerRanges: [IntRangeInput!]
+  minEngagementRate: Float
+  maxEngagementRate: Float
+  minAvgViews: Int
+  maxReelPrice: Int
+  verifiedOnly: Boolean
+  hasEmail: Boolean
+  hasPhone: Boolean
+  "Has an email or a phone number."
+  hasContact: Boolean
+}
+
+type CreatorSearchStats @aws_cognito_user_pools {
+  totalReach: Float!
+  avgEngagementRate: Float
+  verifiedCount: Int!
+}
+
+type CreatorSearchResult @aws_cognito_user_pools {
+  items: [Creator!]!
+  nextToken: String
+  "Total matches; only returned on the first page (no nextToken)."
+  totalCount: Int
+  stats: CreatorSearchStats
+}
+
+type FacetOption @aws_cognito_user_pools {
+  value: String!
+  count: Int!
+}
+
+type CreatorFilterOptions @aws_cognito_user_pools {
+  niches: [FacetOption!]!
+  countries: [FacetOption!]!
+  states: [FacetOption!]!
+  cities: [FacetOption!]!
+  languages: [FacetOption!]!
+  genders: [FacetOption!]!
+}
+
 type Query {
-  listCreators(limit: Int, nextToken: String): CreatorConnection! @aws_cognito_user_pools
+  listCreators(filter: CreatorFilterInput, sort: CreatorSort, limit: Int, nextToken: String): CreatorSearchResult! @aws_cognito_user_pools
+  creatorFilterOptions: CreatorFilterOptions! @aws_cognito_user_pools
   listMyLists: [UserList!]! @aws_cognito_user_pools
   getUserList(id: ID!): UserList @aws_cognito_user_pools
   listCreatorsInList(listId: ID!, limit: Int, nextToken: String): CreatorConnection! @aws_cognito_user_pools

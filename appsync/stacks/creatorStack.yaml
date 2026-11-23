@@ -101,3 +101,13 @@ Resources:
       DataSourceName: !GetAtt CreatorsDataSource.Name
       Runtime: *ResolverRuntime
       Code: *ResolverCode
+
+  CreatorFilterOptionsResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Query
+      FieldName: creatorFilterOptions
+      DataSourceName: !GetAtt CreatorsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
