@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: DynamoDB resources for Influencer Discovery
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+  StackName:
+    Type: String
+    Default: influencer-discovery
+
+Resources:
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${StackName}-users"
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: usersByEmail
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+
+Outputs:
+  UsersTableName:
+    Value: !Ref UsersTable
+  UsersTableArn:
+    Value: !GetAtt UsersTable.Arn

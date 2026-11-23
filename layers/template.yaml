@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Lambda layers for Influencer Discovery
+
+Parameters:
+  StackName:
+    Type: String
+    Default: influencer-discovery
+
+Resources:
+  CommonLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${StackName}-common-lambda-layer"
+      Description: Dependencies for lambda
+      ContentUri: common
+      CompatibleRuntimes:
+        - nodejs22.x
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs22.x
+
+  DynamoDBLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${StackName}-dynamodb-layer"
+      Description: DynamoDB
+      ContentUri: dynamodb
+      CompatibleRuntimes:
+        - nodejs22.x
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs22.x
+
+  UtilsLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "${StackName}-utils-layer"
+      Description: Utils
+      ContentUri: utils
+      CompatibleRuntimes:
+        - nodejs22.x
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      BuildMethod: nodejs22.x
+
+Outputs:
+  CommonLambdaLayer:
+    Value: !Ref CommonLambdaLayer
+  DynamoDBLayer:
+    Value: !Ref DynamoDBLayer
+  UtilsLayer:
+    Value: !Ref UtilsLayer

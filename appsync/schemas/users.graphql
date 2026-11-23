@@ -1,0 +1,11 @@
+type Users @aws_cognito_user_pools {
+  id: ID!
+  email: String!
+  name: String
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Query {
+  getUserById(id: ID!): Users @aws_cognito_user_pools
+}

@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Cognito Authentication for Influencer Discovery
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+  StackName:
+    Type: String
+    Default: influencer-discovery
+  LogLevel:
+    Type: String
+    Default: INFO
+    Description: Log level for Lambda functions
+  LambdaRoleArn:
+    Type: String
+    Description: ARN of the Lambda execution role
+  CommonLambdaLayer:
+    Type: String
+    Description: ARN of the Common Lambda layer
+  DynamoDBLayer:
+    Type: String
+    Description: ARN of the DynamoDB Lambda layer
+  UtilsLayer:
+    Type: String
+    Description: ARN of the Utils Lambda layer
+  UsersTableName:
+    Type: String
+    Description: Name of the users DynamoDB table
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 30
+    LoggingConfig:
+      LogFormat: JSON
+      ApplicationLogLevel: INFO
+      SystemLogLevel: WARN
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        STACK_NAME: !Ref StackName
+        LOG_LEVEL: !Ref LogLevel
+
+Resources:
+  PostConfirmationFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${StackName}-post-confirmation"
+      RetentionInDays: 3
+
+  PostConfirmationFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: PostConfirmationFunctionLogGroup
+    Properties:
+      CodeUri: functions/post-confirmation/
+      FunctionName: !Sub "${StackName}-post-confirmation"
+      Handler: index.handler
+      Role: !Ref LambdaRoleArn
+      Layers:
+        - !Ref CommonLambdaLayer
+        - !Ref UtilsLayer
+        - !Ref DynamoDBLayer
+      Environment:
+        Variables:
+          USERS_TABLE: !Ref UsersTableName
+
+  PostConfirmationPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt PostConfirmationFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt CognitoUserPool.Arn
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${StackName}-user-pool"
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: false
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      LambdaConfig:
+        PostConfirmation: !GetAtt PostConfirmationFunction.Arn
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "${StackName}-user-pool-client"
+      UserPoolId: !Ref CognitoUserPool
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      GenerateSecret: false
+
+Outputs:
+  UserPoolId:
+    Description: "ID of the Cognito User Pool"
+    Value: !Ref CognitoUserPool
+  UserPoolArn:
+    Value: !GetAtt CognitoUserPool.Arn
+  UserPoolClientId:
+    Description: "ID of the Cognito User Pool Client"
+    Value: !Ref CognitoUserPoolClient

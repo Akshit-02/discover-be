@@ -1,0 +1,53 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "influencer-discovery"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+confirm_changeset = true
+resolve_s3 = true
+s3_prefix = "influencer-discovery"
+region = "ap-south-1"
+profile = "briggomediatech"
+parameter_overrides = "Environment=\"dev\" StackName=\"influencer-discovery\" LogLevel=\"ERROR\""
+image_repositories = []
+stack_name = "influencer-discovery"
+
+[default.package.parameters]
+resolve_s3 = true
+
+[default.local_start_api.parameters]
+warm_containers = "EAGER"
+
+[default.local_start_lambda.parameters]
+warm_containers = "EAGER"
+
+[develop.deploy.parameters]
+stack_name = "influencer-discovery-develop"
+resolve_s3 = true
+s3_prefix = "influencer-discovery-develop"
+region = "ap-south-1"
+profile = "briggomediatech"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+parameter_overrides = "Environment=\"develop\" StackName=\"influencer-discovery-develop\" LogLevel=\"ERROR\""
+image_repositories = []
+
+[master.deploy.parameters]
+stack_name = "influencer-discovery-master"
+resolve_s3 = true
+s3_prefix = "influencer-discovery-master"
+region = "ap-south-1"
+profile = "briggomediatech"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+parameter_overrides = "Environment=\"master\" StackName=\"influencer-discovery-master\" LogLevel=\"ERROR\""
+image_repositories = []

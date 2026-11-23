@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: AppSync API for Influencer Discovery
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+  StackName:
+    Type: String
+    Default: influencer-discovery
+  LogLevel:
+    Type: String
+    Default: INFO
+    Description: Log level for Lambda functions
+  UserPoolId:
+    Type: String
+    Description: Cognito User Pool ID for API authentication
+  LambdaRoleArn:
+    Type: String
+    Description: Lambda execution role ARN
+  CommonLambdaLayer:
+    Type: String
+    Description: Common Lambda layer ARN
+  DynamoDBLayer:
+    Type: String
+    Description: DynamoDB Lambda layer ARN
+  UtilsLayer:
+    Type: String
+    Description: Utils Lambda layer ARN
+  UsersTableName:
+    Type: String
+    Description: Name of the users DynamoDB table
+
+Resources:
+  AppSyncLambdaInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: appsync.amazonaws.com
+        Version: "2012-10-17"
+      Policies:
+        - PolicyName: LambdaInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: "*"
+
+  GraphQLAPI:
+    Type: AWS::Serverless::GraphQLApi
+    Properties:
+      Name: !Sub "${StackName}-graphql-api"
+      SchemaUri: ./schema.graphql
+      Logging: false
+      Auth:
+        Type: AMAZON_COGNITO_USER_POOLS
+        UserPool:
+          AwsRegion: !Ref AWS::Region
+          UserPoolId: !Ref UserPoolId
+          DefaultAction: ALLOW
+
+  UserStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: GraphQLAPISchema
+    Properties:
+      TemplateURL: ./stacks/userStack.yaml
+      Parameters:
+        StackName: !Ref StackName
+        LogLevel: !Ref LogLevel
+        AppSyncLambdaInvokeRoleArn: !GetAtt AppSyncLambdaInvokeRole.Arn
+        GraphQLAPI: !GetAtt GraphQLAPI.ApiId
+        LambdaRoleArn: !Ref LambdaRoleArn
+        CommonLambdaLayer: !Ref CommonLambdaLayer
+        DynamoDBLayer: !Ref DynamoDBLayer
+        UtilsLayer: !Ref UtilsLayer
+        UsersTableName: !Ref UsersTableName
+
+Outputs:
+  GraphQLApiId:
+    Value: !GetAtt GraphQLAPI.ApiId
+  GraphQLApiUrl:
+    Value: !GetAtt GraphQLAPI.GraphQLUrl

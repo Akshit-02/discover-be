@@ -1,0 +1,13 @@
+const { mergeTypeDefs } = require("@graphql-tools/merge");
+const { loadFilesSync } = require("@graphql-tools/load-files");
+const { writeFileSync } = require("fs");
+const path = require("path");
+const { print } = require("graphql");
+
+const typesArray = loadFilesSync(path.join(__dirname, "appsync/schemas"), {
+  extensions: ["graphql"],
+});
+const typeDefs = mergeTypeDefs(typesArray);
+
+writeFileSync(path.join(__dirname, "appsync/schema.graphql"), print(typeDefs));
+console.log("Schema merged successfully!");
