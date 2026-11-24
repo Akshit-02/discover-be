@@ -74,6 +74,7 @@ Resources:
         DynamoDBLayer: !GetAtt LambdaLayers.Outputs.DynamoDBLayer
         UtilsLayer: !GetAtt LambdaLayers.Outputs.UtilsLayer
         UsersTableName: !GetAtt DynamoDB.Outputs.UsersTableName
+        CreditsTableName: !GetAtt DynamoDB.Outputs.CreditsTableName
 
   AppSync:
     Type: AWS::Serverless::Application
@@ -92,6 +93,7 @@ Resources:
         PostgresLayer: !GetAtt LambdaLayers.Outputs.PostgresLayer
         NeonDatabaseUrl: !Ref NeonDatabaseUrl
         UserListsTableName: !GetAtt DynamoDB.Outputs.UserListsTableName
+        CreditsTableName: !GetAtt DynamoDB.Outputs.CreditsTableName
 
 Outputs:
   UserPoolId:
@@ -104,3 +106,5 @@ Outputs:
     Value: !GetAtt DynamoDB.Outputs.UsersTableName
   UserListsTableName:
     Value: !GetAtt DynamoDB.Outputs.UserListsTableName
+  CreditsTableName:
+    Value: !GetAtt DynamoDB.Outputs.CreditsTableName

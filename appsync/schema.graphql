@@ -2,8 +2,9 @@ type Creator @aws_cognito_user_pools {
   id: ID!
   name: String
   username: String!
-  email: String
-  phone: String
+  "Contact details are only returned by revealCreatorContact / openCreatorProfile."
+  hasEmail: Boolean!
+  hasPhone: Boolean!
   followers: Int
   following: Int
   totalPosts: Int
@@ -58,7 +59,7 @@ input IntRangeInput {
 }
 
 input CreatorFilterInput {
-  "Matches name, @username or city (case-insensitive, partial)."
+  "Matches name or @username (case-insensitive, partial)."
   search: String
   "Niche slugs, e.g. fashion-lifestyle. Matches creators with any of them."
   niches: [String!]
@@ -72,6 +73,9 @@ input CreatorFilterInput {
   minEngagementRate: Float
   maxEngagementRate: Float
   minAvgViews: Int
+  minAvgLikes: Int
+  "Minimum posts per month."
+  minPostingFrequency: Int
   maxReelPrice: Int
   verifiedOnly: Boolean
   hasEmail: Boolean
@@ -92,6 +96,10 @@ type CreatorSearchResult @aws_cognito_user_pools {
   "Total matches; only returned on the first page (no nextToken)."
   totalCount: Int
   stats: CreatorSearchStats
+  "Credits spent on this request (advanced filters are charged once per set per 24h)."
+  creditsCharged: Int!
+  "Updated balance when advanced filters were used."
+  credits: CreditBalance
 }
 
 type FacetOption @aws_cognito_user_pools {
@@ -111,12 +119,66 @@ type CreatorFilterOptions @aws_cognito_user_pools {
 type Query {
   listCreators(filter: CreatorFilterInput, sort: CreatorSort, limit: Int, nextToken: String): CreatorSearchResult! @aws_cognito_user_pools
   creatorFilterOptions: CreatorFilterOptions! @aws_cognito_user_pools
+  myCredits: CreditBalance! @aws_cognito_user_pools
   listMyLists: [UserList!]! @aws_cognito_user_pools
   getUserList(id: ID!): UserList @aws_cognito_user_pools
   listCreatorsInList(listId: ID!, limit: Int, nextToken: String): CreatorConnection! @aws_cognito_user_pools
   getCreatorListIds(creatorId: ID!): [ID!]! @aws_cognito_user_pools
   getUserById(id: ID!): Users @aws_cognito_user_pools
   getMe: Users @aws_cognito_user_pools
+}
+
+type CreditCosts @aws_cognito_user_pools {
+  advancedFilter: Int!
+  revealEmail: Int!
+  revealPhone: Int!
+  openProfile: Int!
+}
+
+type CreditBalance @aws_cognito_user_pools {
+  "Spendable credits; 0 once expired."
+  balance: Int!
+  expiresAt: AWSDateTime
+  expired: Boolean!
+  costs: CreditCosts!
+}
+
+enum ContactField {
+  EMAIL
+  PHONE
+}
+
+type ContactReveal @aws_cognito_user_pools {
+  creatorId: ID!
+  field: ContactField!
+  "False when the creator has no such contact; nothing is charged then."
+  available: Boolean!
+  value: String
+  charged: Int!
+  credits: CreditBalance!
+}
+
+type CreatorProfile @aws_cognito_user_pools {
+  creator: Creator!
+  "Only set when previously revealed."
+  email: String
+  phone: String
+  emailRevealed: Boolean!
+  phoneRevealed: Boolean!
+  charged: Int!
+  credits: CreditBalance!
+}
+
+type Mutation {
+  "Costs credits the first time a creator's profile is opened."
+  openCreatorProfile(id: ID!): CreatorProfile! @aws_cognito_user_pools
+  revealCreatorContact(creatorId: ID!, field: ContactField!): ContactReveal! @aws_cognito_user_pools
+  createUserList(input: CreateUserListInput!): UserList! @aws_cognito_user_pools
+  updateUserList(id: ID!, input: UpdateUserListInput!): UserList! @aws_cognito_user_pools
+  deleteUserList(id: ID!): Boolean! @aws_cognito_user_pools
+  addCreatorToList(listId: ID!, creatorId: ID!): UserList! @aws_cognito_user_pools
+  removeCreatorFromList(listId: ID!, creatorId: ID!): UserList! @aws_cognito_user_pools
+  updateMyProfile(input: UpdateProfileInput!): Users! @aws_cognito_user_pools
 }
 
 type UserList @aws_cognito_user_pools {
@@ -136,15 +198,6 @@ input CreateUserListInput {
 input UpdateUserListInput {
   name: String
   description: String
-}
-
-type Mutation {
-  createUserList(input: CreateUserListInput!): UserList! @aws_cognito_user_pools
-  updateUserList(id: ID!, input: UpdateUserListInput!): UserList! @aws_cognito_user_pools
-  deleteUserList(id: ID!): Boolean! @aws_cognito_user_pools
-  addCreatorToList(listId: ID!, creatorId: ID!): UserList! @aws_cognito_user_pools
-  removeCreatorFromList(listId: ID!, creatorId: ID!): UserList! @aws_cognito_user_pools
-  updateMyProfile(input: UpdateProfileInput!): Users! @aws_cognito_user_pools
 }
 
 type Users @aws_cognito_user_pools {

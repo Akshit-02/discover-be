@@ -61,6 +61,8 @@ export const normalizeFilter = (input = {}) => {
     minEngagementRate: finite(f.minEngagementRate),
     maxEngagementRate: finite(f.maxEngagementRate),
     minAvgViews: finite(f.minAvgViews),
+    minAvgLikes: finite(f.minAvgLikes),
+    minPostingFrequency: finite(f.minPostingFrequency),
     maxReelPrice: finite(f.maxReelPrice),
     verifiedOnly: f.verifiedOnly === true,
     hasEmail: f.hasEmail === true,
@@ -80,7 +82,7 @@ export const buildWhere = (filter, params = []) => {
 
   if (f.search) {
     const like = p(`%${f.search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
-    clauses.push(`(name ILIKE ${like} OR username ILIKE ${like} OR city ILIKE ${like})`);
+    clauses.push(`(name ILIKE ${like} OR username ILIKE ${like})`);
   }
   if (f.niches.length) clauses.push(`niches && ${p(f.niches)}::text[]`);
   if (f.languages.length) clauses.push(`languages && ${p(f.languages)}::text[]`);
@@ -113,6 +115,10 @@ export const buildWhere = (filter, params = []) => {
     clauses.push(`avg_engagement_rate <= ${p(f.maxEngagementRate)}::double precision`);
   }
   if (f.minAvgViews !== null) clauses.push(`avg_views >= ${p(Math.trunc(f.minAvgViews))}::bigint`);
+  if (f.minAvgLikes !== null) clauses.push(`avg_likes >= ${p(Math.trunc(f.minAvgLikes))}::bigint`);
+  if (f.minPostingFrequency !== null) {
+    clauses.push(`posting_frequency >= ${p(Math.trunc(f.minPostingFrequency))}::bigint`);
+  }
   if (f.maxReelPrice !== null) {
     clauses.push(`reel_price > 0 AND reel_price <= ${p(Math.trunc(f.maxReelPrice))}::bigint`);
   }

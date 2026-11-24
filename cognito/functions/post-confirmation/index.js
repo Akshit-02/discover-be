@@ -1,7 +1,9 @@
 import { genericCreateIfNotExists } from "/opt/nodejs/dynamodb.js";
 import Logger from "/opt/nodejs/logger.js";
 
-const { USERS_TABLE } = process.env;
+const { USERS_TABLE, CREDITS_TABLE } = process.env;
+const SIGNUP_CREDITS = 50;
+const SIGNUP_CREDIT_DAYS = 30;
 
 export const handler = async (event) => {
   Logger.log("Event Post-confirmation:", JSON.stringify(event, null, 2));
@@ -29,6 +31,26 @@ export const handler = async (event) => {
   } catch (error) {
     Logger.error("Post-confirmation error:", error);
     throw error;
+  }
+
+  // Signup grant. Non-fatal: the API creates the same wallet lazily if this fails.
+  try {
+    await genericCreateIfNotExists({
+      tableName: CREDITS_TABLE,
+      pkName: "pk",
+      item: {
+        pk: `USER#${userPayload.id}`,
+        sk: "WALLET",
+        userId: userPayload.id,
+        balance: SIGNUP_CREDITS,
+        granted: SIGNUP_CREDITS,
+        expiresAt: new Date(Date.parse(now) + SIGNUP_CREDIT_DAYS * 86_400_000).toISOString(),
+        createdAt: now,
+        updatedAt: now,
+      },
+    });
+  } catch (error) {
+    Logger.error("Signup credits error:", error);
   }
 
   return event;

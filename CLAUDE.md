@@ -21,6 +21,14 @@ Creators live in Neon Postgres (`creators` table), served by `appsync/handlers/c
 - `listCreators(filter, sort, limit, nextToken)`: `helper/filters.js` builds parameterised WHERE/ORDER BY (never interpolate user input) with keyset pagination; the cursor is base64url `{s: sort, v: sort value as text, id}`. `totalCount`/`stats` come only with the first page. `creatorFilterOptions` returns facet counts, cached 10 min in the Lambda.
 - Sort expressions in `SORTS` must match the expression indexes in `scripts/migrations/*.sql`; apply them with `npm run db:migrate` (idempotent).
 
+Credits live in DynamoDB table `${StackName}-credits` (logic in `appsync/handlers/creators`: `helper/credits.js` costs/rules, `lib/credits.js`, `resolvers/credits.js`):
+- Wallet `pk=USER#<id>, sk=WALLET` (`balance`, `expiresAt`). Signup grants 50 credits expiring 30 days after account creation (post-confirmation trigger; `ensureWallet` creates it lazily for older accounts). Expired wallets spend nothing.
+- Revealed contacts are stored per user on the unlock row (`sk=UNLOCK#EMAIL|PHONE#<creatorId>`, with `value`, `creatorId`, `username`); repeat reveals and profile opens return the stored value without charging.
+- Costs: advanced filter set 2 (hash of the non-basic filter fields; same set free for 24h via an expiring unlock), open profile 1, reveal email 1, reveal phone 2. Unlocks `sk=UNLOCK#<KIND>#<ref>` make repeats free; missing contacts are never charged.
+- `chargeForUnlock` is one transaction: conditional wallet decrement + unlock put + ledger row `sk=TXN#...`.
+- Creator rows never include `email`/`phone` (only `hasEmail`/`hasPhone`); values come only from `revealCreatorContact` / `openCreatorProfile`.
+- Insufficient credits returns `{ __error }` from the Lambda, which the creator stack's resolver turns into GraphQL errorType `InsufficientCredits`.
+
 Personal lists live in DynamoDB table `${StackName}-user-lists` (handler `appsync/handlers/lists`, stack `appsync/stacks/listStack.yaml`):
 - List: `pk=USER#<userId>`, `sk=LIST#<listId>` (name, description, creatorCount).
 - Member: `pk=LIST#<listId>`, `sk=CREATOR#<creatorId>`, `addedAt` (LSI `byAddedAt` for newest-first paging), `gsi1pk=USER#<userId>`, `gsi1sk=CREATOR#<creatorId>#LIST#<listId>` (GSI `gsi1` for "which of my lists contain this creator").

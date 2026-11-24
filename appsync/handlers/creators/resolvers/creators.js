@@ -9,6 +9,7 @@ import {
   normalizeFilter,
   resolveSort,
 } from "../helper/filters.js";
+import { chargeAdvancedFilter, requireUserId } from "./credits.js";
 
 const FACET_TTL_MS = 10 * 60 * 1000;
 let facetCache = null;
@@ -19,6 +20,8 @@ export const listCreatorsHandler = async (event) => {
   const pageSize = clampLimit(limit);
   const normalized = normalizeFilter(filter);
   const cursor = decodeCursor(nextToken, sortKey);
+  // Advanced filters are paid per set; this throws before querying when the user can't afford it.
+  const billing = await chargeAdvancedFilter(requireUserId(event), normalized);
 
   // Totals/stats only on the first page; later pages reuse what the client already has.
   const [rows, stats] = await Promise.all([
@@ -40,6 +43,8 @@ export const listCreatorsHandler = async (event) => {
           verifiedCount: stats.verified_count,
         }
       : null,
+    creditsCharged: billing ? billing.charged : 0,
+    credits: billing ? billing.credits : null,
   };
 };
 

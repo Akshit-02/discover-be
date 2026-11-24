@@ -1,0 +1,50 @@
+type CreditCosts @aws_cognito_user_pools {
+  advancedFilter: Int!
+  revealEmail: Int!
+  revealPhone: Int!
+  openProfile: Int!
+}
+
+type CreditBalance @aws_cognito_user_pools {
+  "Spendable credits; 0 once expired."
+  balance: Int!
+  expiresAt: AWSDateTime
+  expired: Boolean!
+  costs: CreditCosts!
+}
+
+enum ContactField {
+  EMAIL
+  PHONE
+}
+
+type ContactReveal @aws_cognito_user_pools {
+  creatorId: ID!
+  field: ContactField!
+  "False when the creator has no such contact; nothing is charged then."
+  available: Boolean!
+  value: String
+  charged: Int!
+  credits: CreditBalance!
+}
+
+type CreatorProfile @aws_cognito_user_pools {
+  creator: Creator!
+  "Only set when previously revealed."
+  email: String
+  phone: String
+  emailRevealed: Boolean!
+  phoneRevealed: Boolean!
+  charged: Int!
+  credits: CreditBalance!
+}
+
+type Query {
+  myCredits: CreditBalance! @aws_cognito_user_pools
+}
+
+type Mutation {
+  "Costs credits the first time a creator's profile is opened."
+  openCreatorProfile(id: ID!): CreatorProfile! @aws_cognito_user_pools
+  revealCreatorContact(creatorId: ID!, field: ContactField!): ContactReveal! @aws_cognito_user_pools
+}

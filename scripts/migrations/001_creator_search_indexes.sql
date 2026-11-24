@@ -4,7 +4,6 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE INDEX IF NOT EXISTS creators_name_trgm_idx ON creators USING gin (name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS creators_username_trgm_idx ON creators USING gin (username gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS creators_city_trgm_idx ON creators USING gin (city gin_trgm_ops);
 
 CREATE INDEX IF NOT EXISTS creators_niches_idx ON creators USING gin (niches);
 CREATE INDEX IF NOT EXISTS creators_languages_idx ON creators USING gin (languages);

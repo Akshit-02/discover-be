@@ -41,6 +41,9 @@ Parameters:
   UserListsTableName:
     Type: String
     Description: Name of the user lists DynamoDB table
+  CreditsTableName:
+    Type: String
+    Description: Name of the credits DynamoDB table
 
 Resources:
   AppSyncLambdaInvokeRole:
@@ -103,9 +106,13 @@ Resources:
         AppSyncLambdaInvokeRoleArn: !GetAtt AppSyncLambdaInvokeRole.Arn
         GraphQLAPI: !GetAtt GraphQLAPI.ApiId
         LambdaRoleArn: !Ref LambdaRoleArn
+        CommonLambdaLayer: !Ref CommonLambdaLayer
+        DynamoDBLayer: !Ref DynamoDBLayer
         UtilsLayer: !Ref UtilsLayer
         PostgresLayer: !Ref PostgresLayer
         NeonDatabaseUrl: !Ref NeonDatabaseUrl
+        UsersTableName: !Ref UsersTableName
+        CreditsTableName: !Ref CreditsTableName
 
   ListStack:
     Type: AWS::CloudFormation::Stack

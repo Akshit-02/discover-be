@@ -15,6 +15,10 @@ Parameters:
     Type: String
   LambdaRoleArn:
     Type: String
+  CommonLambdaLayer:
+    Type: String
+  DynamoDBLayer:
+    Type: String
   UtilsLayer:
     Type: String
   PostgresLayer:
@@ -22,6 +26,10 @@ Parameters:
   NeonDatabaseUrl:
     Type: String
     NoEcho: true
+  UsersTableName:
+    Type: String
+  CreditsTableName:
+    Type: String
 
 # Define reusables with anchors
 Metadata:
@@ -45,6 +53,9 @@ Metadata:
 
     export function response(ctx) {
       if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+      // Handled errors come back as data so the client gets a stable errorType.
+      const failure = ctx.result && ctx.result.__error;
+      if (failure) util.error(failure.message, failure.type, null, failure.info);
       return ctx.result;
     }
 
@@ -74,6 +85,8 @@ Resources:
       Runtime: nodejs22.x
       MemorySize: 256
       Layers:
+        - !Ref CommonLambdaLayer
+        - !Ref DynamoDBLayer
         - !Ref PostgresLayer
         - !Ref UtilsLayer
       Environment:
@@ -81,6 +94,8 @@ Resources:
           LOG_LEVEL: !Ref LogLevel
           STACK_NAME: !Ref StackName
           DATABASE_URL: !Ref NeonDatabaseUrl
+          USERS_TABLE: !Ref UsersTableName
+          CREDITS_TABLE: !Ref CreditsTableName
 
   CreatorsDataSource:
     Type: AWS::AppSync::DataSource
@@ -108,6 +123,36 @@ Resources:
       ApiId: !Ref GraphQLAPI
       TypeName: Query
       FieldName: creatorFilterOptions
+      DataSourceName: !GetAtt CreatorsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  MyCreditsResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Query
+      FieldName: myCredits
+      DataSourceName: !GetAtt CreatorsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  OpenCreatorProfileResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: openCreatorProfile
+      DataSourceName: !GetAtt CreatorsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  RevealCreatorContactResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: revealCreatorContact
       DataSourceName: !GetAtt CreatorsDataSource.Name
       Runtime: *ResolverRuntime
       Code: *ResolverCode

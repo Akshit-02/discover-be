@@ -2,8 +2,9 @@ type Creator @aws_cognito_user_pools {
   id: ID!
   name: String
   username: String!
-  email: String
-  phone: String
+  "Contact details are only returned by revealCreatorContact / openCreatorProfile."
+  hasEmail: Boolean!
+  hasPhone: Boolean!
   followers: Int
   following: Int
   totalPosts: Int
@@ -58,7 +59,7 @@ input IntRangeInput {
 }
 
 input CreatorFilterInput {
-  "Matches name, @username or city (case-insensitive, partial)."
+  "Matches name or @username (case-insensitive, partial)."
   search: String
   "Niche slugs, e.g. fashion-lifestyle. Matches creators with any of them."
   niches: [String!]
@@ -72,6 +73,9 @@ input CreatorFilterInput {
   minEngagementRate: Float
   maxEngagementRate: Float
   minAvgViews: Int
+  minAvgLikes: Int
+  "Minimum posts per month."
+  minPostingFrequency: Int
   maxReelPrice: Int
   verifiedOnly: Boolean
   hasEmail: Boolean
@@ -92,6 +96,10 @@ type CreatorSearchResult @aws_cognito_user_pools {
   "Total matches; only returned on the first page (no nextToken)."
   totalCount: Int
   stats: CreatorSearchStats
+  "Credits spent on this request (advanced filters are charged once per set per 24h)."
+  creditsCharged: Int!
+  "Updated balance when advanced filters were used."
+  credits: CreditBalance
 }
 
 type FacetOption @aws_cognito_user_pools {

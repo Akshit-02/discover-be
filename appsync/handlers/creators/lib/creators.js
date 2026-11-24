@@ -29,3 +29,8 @@ export const queryFacets = async () => {
   const results = await Promise.all(keys.map((k) => sql.query(FACET_QUERIES[k])));
   return Object.fromEntries(keys.map((k, i) => [k, results[i]]));
 };
+
+export const getCreatorById = async (id) => {
+  const [row] = await getSql().query("SELECT * FROM creators WHERE id = $1::uuid", [id]);
+  return row || null;
+};
