@@ -70,6 +70,33 @@ Resources:
           USERS_TABLE: !Ref UsersTableName
           CREDITS_TABLE: !Ref CreditsTableName
 
+  CustomMessageFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${StackName}-custom-message"
+      RetentionInDays: 3
+
+  # Branded HTML emails for signup, resend, password reset and email change codes.
+  CustomMessageFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: CustomMessageFunctionLogGroup
+    Properties:
+      CodeUri: functions/custom-message/
+      FunctionName: !Sub "${StackName}-custom-message"
+      Handler: index.handler
+      Role: !Ref LambdaRoleArn
+      Timeout: 5
+      Layers:
+        - !Ref UtilsLayer
+
+  CustomMessagePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CustomMessageFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt CognitoUserPool.Arn
+
   PostConfirmationPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -92,8 +119,9 @@ Resources:
         CaseSensitive: false
       VerificationMessageTemplate:
         DefaultEmailOption: CONFIRM_WITH_CODE
-        EmailSubject: "Your Kudozz verification code"
-        EmailMessage: "Your Kudozz Influencer Discovery verification code is {####}. It expires in 24 hours. If you didn't request this, you can ignore this email."
+        # Fallback only: the CustomMessage trigger sends the branded HTML version.
+        EmailSubject: "Verify your email for Kudozz"
+        EmailMessage: "<p>Hi there,</p><p>Thanks for signing up for Kudozz Influencer Discovery. Your verification code is:</p><p style=\"font-size:24px;font-weight:bold;letter-spacing:6px\">{####}</p><p>This code expires in 24 hours. If you didn't create a Kudozz account, you can safely ignore this email.</p><p>— The Kudozz team</p>"
       AccountRecoverySetting:
         RecoveryMechanisms:
           - Name: verified_email
@@ -116,6 +144,7 @@ Resources:
           Required: false
       LambdaConfig:
         PostConfirmation: !GetAtt PostConfirmationFunction.Arn
+        CustomMessage: !GetAtt CustomMessageFunction.Arn
 
   CognitoUserPoolClient:
     Type: AWS::Cognito::UserPoolClient

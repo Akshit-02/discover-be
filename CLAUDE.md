@@ -14,7 +14,7 @@ Influencer Discovery Backend — AWS SAM app (nested stacks) modelled on `myw-br
 
 1. `layers/` — `common` (third-party deps), `dynamodb` (`/opt/nodejs/dynamodb.js` generic helpers, object args), `utils` (`/opt/nodejs/logger.js`), `postgres` (`/opt/nodejs/postgres.js` → `getSql()` Neon HTTP client, reads `DATABASE_URL`).
 2. `dynamodb/` — tables (`${StackName}-users`, PK `id` = Cognito `sub`, GSI `usersByEmail`).
-3. `cognito/` — email + password user pool, app client (SRP / USER_PASSWORD / refresh), `PostConfirmation` trigger in `cognito/functions/post-confirmation` that creates the users row.
+3. `cognito/` — email + password user pool, app client (SRP / USER_PASSWORD / refresh), `PostConfirmation` trigger in `cognito/functions/post-confirmation` that creates the users row. `CustomMessage` trigger in `cognito/functions/custom-message` sends branded HTML emails per trigger source (copy in `index.js`, layout in `template.js`); the pool's `VerificationMessageTemplate` is only a fallback.
 4. `appsync/` — GraphQL API (Cognito user pool auth). Resolvers live in `appsync/stacks/*.yaml`; Lambda code in `appsync/handlers/<domain>/` (`index.js` switch on `fieldName` → `resolvers/` business logic → `lib/` DynamoDB access only).
 
 Creators live in Neon Postgres (`creators` table), served by `appsync/handlers/creators` in `appsync/stacks/creatorStack.yaml`. `lib/` runs SQL via `getSql()` tagged templates (always parameterised), `helper/` maps snake_case rows to camelCase GraphQL fields.
