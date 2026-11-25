@@ -44,6 +44,9 @@ Parameters:
   CreditsTableName:
     Type: String
     Description: Name of the credits DynamoDB table
+  SupportMessagesTableName:
+    Type: String
+    Description: Name of the support messages DynamoDB table
 
 Resources:
   AppSyncLambdaInvokeRole:
@@ -131,6 +134,23 @@ Resources:
         PostgresLayer: !Ref PostgresLayer
         NeonDatabaseUrl: !Ref NeonDatabaseUrl
         UserListsTableName: !Ref UserListsTableName
+
+  SupportStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: GraphQLAPISchema
+    Properties:
+      TemplateURL: ./stacks/supportStack.yaml
+      Parameters:
+        StackName: !Ref StackName
+        LogLevel: !Ref LogLevel
+        AppSyncLambdaInvokeRoleArn: !GetAtt AppSyncLambdaInvokeRole.Arn
+        GraphQLAPI: !GetAtt GraphQLAPI.ApiId
+        LambdaRoleArn: !Ref LambdaRoleArn
+        CommonLambdaLayer: !Ref CommonLambdaLayer
+        DynamoDBLayer: !Ref DynamoDBLayer
+        UtilsLayer: !Ref UtilsLayer
+        UsersTableName: !Ref UsersTableName
+        SupportMessagesTableName: !Ref SupportMessagesTableName
 
 Outputs:
   GraphQLApiId:

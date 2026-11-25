@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export const SIGNUP_CREDITS = 50;
+export const SIGNUP_CREDITS = 30;
 export const SIGNUP_CREDIT_DAYS = 30;
 // Re-running the same advanced filter set (paging, sorting, search) is free for this long.
 export const FILTER_UNLOCK_HOURS = 24;

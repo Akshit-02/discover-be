@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Help & Support Stack for Influencer Discovery
+
+Parameters:
+  StackName:
+    Type: String
+    Default: influencer-discovery
+  LogLevel:
+    Type: String
+    Default: INFO
+  AppSyncLambdaInvokeRoleArn:
+    Type: String
+  GraphQLAPI:
+    Type: String
+  LambdaRoleArn:
+    Type: String
+  CommonLambdaLayer:
+    Type: String
+  DynamoDBLayer:
+    Type: String
+  UtilsLayer:
+    Type: String
+  UsersTableName:
+    Type: String
+  SupportMessagesTableName:
+    Type: String
+
+# Define reusables with anchors
+Metadata:
+  ResolverRuntime: &ResolverRuntime
+    Name: APPSYNC_JS
+    RuntimeVersion: 1.0.0
+  ResolverCode: &ResolverCode |
+    import { util } from "@aws-appsync/utils";
+
+    export function request(ctx) {
+      return {
+        operation: "Invoke",
+        payload: {
+          arguments: ctx.args,
+          source: ctx.source,
+          identity: ctx.identity,
+          fieldName: ctx.info.fieldName,
+        },
+      };
+    }
+
+    export function response(ctx) {
+      if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+      return ctx.result;
+    }
+
+Globals:
+  Function:
+    Timeout: 30
+    LoggingConfig:
+      LogFormat: JSON
+      ApplicationLogLevel: INFO
+      SystemLogLevel: WARN
+
+Resources:
+  SupportFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${StackName}-support"
+      RetentionInDays: 3
+
+  SupportFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: SupportFunctionLogGroup
+    Properties:
+      FunctionName: !Sub "${StackName}-support"
+      CodeUri: ../handlers/support
+      Handler: index.handler
+      Role: !Ref LambdaRoleArn
+      Runtime: nodejs22.x
+      MemorySize: 256
+      Layers:
+        - !Ref CommonLambdaLayer
+        - !Ref DynamoDBLayer
+        - !Ref UtilsLayer
+      Environment:
+        Variables:
+          LOG_LEVEL: !Ref LogLevel
+          STACK_NAME: !Ref StackName
+          USERS_TABLE: !Ref UsersTableName
+          SUPPORT_MESSAGES_TABLE: !Ref SupportMessagesTableName
+
+  SupportDataSource:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      Name: SupportDataSource
+      Type: AWS_LAMBDA
+      LambdaConfig:
+        LambdaFunctionArn: !GetAtt SupportFunction.Arn
+      ServiceRoleArn: !Ref AppSyncLambdaInvokeRoleArn
+
+  SubmitSupportMessageResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: submitSupportMessage
+      DataSourceName: !GetAtt SupportDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  ListMySupportMessagesResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Query
+      FieldName: listMySupportMessages
+      DataSourceName: !GetAtt SupportDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode

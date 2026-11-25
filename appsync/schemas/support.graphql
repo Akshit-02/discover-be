@@ -1,0 +1,39 @@
+enum SupportMessageType {
+  SUGGESTION
+  FEEDBACK
+  QUERY
+  BUG
+}
+
+enum SupportMessageStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+type SupportMessage @aws_cognito_user_pools {
+  id: ID!
+  type: SupportMessageType!
+  subject: String!
+  message: String!
+  status: SupportMessageStatus!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+input SupportMessageInput {
+  type: SupportMessageType!
+  subject: String!
+  message: String!
+  "Page the user was on, for context."
+  page: String
+}
+
+type Query {
+  "Caller's 20 most recent messages, newest first."
+  listMySupportMessages: [SupportMessage!]! @aws_cognito_user_pools
+}
+
+type Mutation {
+  submitSupportMessage(input: SupportMessageInput!): SupportMessage! @aws_cognito_user_pools
+}

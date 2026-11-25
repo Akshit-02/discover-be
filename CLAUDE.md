@@ -22,12 +22,14 @@ Creators live in Neon Postgres (`creators` table), served by `appsync/handlers/c
 - Sort expressions in `SORTS` must match the expression indexes in `scripts/migrations/*.sql`; apply them with `npm run db:migrate` (idempotent).
 
 Credits live in DynamoDB table `${StackName}-credits` (logic in `appsync/handlers/creators`: `helper/credits.js` costs/rules, `lib/credits.js`, `resolvers/credits.js`):
-- Wallet `pk=USER#<id>, sk=WALLET` (`balance`, `expiresAt`). Signup grants 50 credits expiring 30 days after account creation (post-confirmation trigger; `ensureWallet` creates it lazily for older accounts). Expired wallets spend nothing.
+- Wallet `pk=USER#<id>, sk=WALLET` (`balance`, `expiresAt`). Signup grants 30 credits expiring 30 days after account creation (post-confirmation trigger; `ensureWallet` creates it lazily for older accounts). Expired wallets spend nothing.
 - Revealed contacts are stored per user on the unlock row (`sk=UNLOCK#EMAIL|PHONE#<creatorId>`, with `value`, `creatorId`, `username`); repeat reveals and profile opens return the stored value without charging.
 - Costs: advanced filter set 2 (hash of the non-basic filter fields; same set free for 24h via an expiring unlock), open profile 1, reveal email 1, reveal phone 2. Unlocks `sk=UNLOCK#<KIND>#<ref>` make repeats free; missing contacts are never charged.
 - `chargeForUnlock` is one transaction: conditional wallet decrement + unlock put + ledger row `sk=TXN#...`.
 - Creator rows never include `email`/`phone` (only `hasEmail`/`hasPhone`); values come only from `revealCreatorContact` / `openCreatorProfile`.
 - Insufficient credits returns `{ __error }` from the Lambda, which the creator stack's resolver turns into GraphQL errorType `InsufficientCredits`.
+
+Help & support messages live in DynamoDB table `${StackName}-support-messages` (handler `appsync/handlers/support`, stack `appsync/stacks/supportStack.yaml`): `pk=USER#<userId>`, `sk=MSG#<createdAt>#<id>`, with `type` (SUGGESTION/FEEDBACK/QUERY/BUG), `subject`, `message`, `status` (OPEN/IN_PROGRESS/RESOLVED), plus the sender's email/name/company copied from the users table. GSI `byStatus` (`status`, `createdAt`) is for triaging open messages. Max 10 messages per user per 24h.
 
 Personal lists live in DynamoDB table `${StackName}-user-lists` (handler `appsync/handlers/lists`, stack `appsync/stacks/listStack.yaml`):
 - List: `pk=USER#<userId>`, `sk=LIST#<listId>` (name, description, creatorCount).

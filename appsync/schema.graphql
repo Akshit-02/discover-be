@@ -124,6 +124,8 @@ type Query {
   getUserList(id: ID!): UserList @aws_cognito_user_pools
   listCreatorsInList(listId: ID!, limit: Int, nextToken: String): CreatorConnection! @aws_cognito_user_pools
   getCreatorListIds(creatorId: ID!): [ID!]! @aws_cognito_user_pools
+  "Caller's 20 most recent messages, newest first."
+  listMySupportMessages: [SupportMessage!]! @aws_cognito_user_pools
   getUserById(id: ID!): Users @aws_cognito_user_pools
   getMe: Users @aws_cognito_user_pools
 }
@@ -178,6 +180,7 @@ type Mutation {
   deleteUserList(id: ID!): Boolean! @aws_cognito_user_pools
   addCreatorToList(listId: ID!, creatorId: ID!): UserList! @aws_cognito_user_pools
   removeCreatorFromList(listId: ID!, creatorId: ID!): UserList! @aws_cognito_user_pools
+  submitSupportMessage(input: SupportMessageInput!): SupportMessage! @aws_cognito_user_pools
   updateMyProfile(input: UpdateProfileInput!): Users! @aws_cognito_user_pools
 }
 
@@ -198,6 +201,37 @@ input CreateUserListInput {
 input UpdateUserListInput {
   name: String
   description: String
+}
+
+enum SupportMessageType {
+  SUGGESTION
+  FEEDBACK
+  QUERY
+  BUG
+}
+
+enum SupportMessageStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+type SupportMessage @aws_cognito_user_pools {
+  id: ID!
+  type: SupportMessageType!
+  subject: String!
+  message: String!
+  status: SupportMessageStatus!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+input SupportMessageInput {
+  type: SupportMessageType!
+  subject: String!
+  message: String!
+  "Page the user was on, for context."
+  page: String
 }
 
 type Users @aws_cognito_user_pools {

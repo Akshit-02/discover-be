@@ -2,7 +2,7 @@ import { genericCreateIfNotExists } from "/opt/nodejs/dynamodb.js";
 import Logger from "/opt/nodejs/logger.js";
 
 const { USERS_TABLE, CREDITS_TABLE } = process.env;
-const SIGNUP_CREDITS = 50;
+const SIGNUP_CREDITS = 30;
 const SIGNUP_CREDIT_DAYS = 30;
 
 export const handler = async (event) => {
