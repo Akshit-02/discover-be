@@ -71,10 +71,13 @@ export const normalizeFilter = (input = {}) => {
   };
 };
 
+/** Creators without engagement rate, avg views or avg likes are never returned. */
+export const HAS_METRICS = "avg_engagement_rate > 0 AND avg_views > 0 AND avg_likes > 0";
+
 /** Returns { clauses: string[], params: any[] } — clauses reference $1..$n in params order. */
 export const buildWhere = (filter, params = []) => {
   const f = filter;
-  const clauses = [];
+  const clauses = [HAS_METRICS];
   const p = (value) => {
     params.push(value);
     return `$${params.length}`;

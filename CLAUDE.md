@@ -19,6 +19,7 @@ Influencer Discovery Backend — AWS SAM app (nested stacks) modelled on `myw-br
 
 Creators live in Neon Postgres (`creators` table), served by `appsync/handlers/creators` in `appsync/stacks/creatorStack.yaml`. `lib/` runs SQL via `getSql()` tagged templates (always parameterised), `helper/` maps snake_case rows to camelCase GraphQL fields.
 - `listCreators(filter, sort, limit, nextToken)`: `helper/filters.js` builds parameterised WHERE/ORDER BY (never interpolate user input) with keyset pagination; the cursor is base64url `{s: sort, v: sort value as text, id}`. `totalCount`/`stats` come only with the first page. `creatorFilterOptions` returns facet counts, cached 10 min in the Lambda.
+- Creators missing engagement rate, avg views or avg likes (NULL or 0) are never returned: `HAS_METRICS` in `helper/filters.js` is always in the WHERE, and is also applied to facets, `getCreatorById` and the lists handler's creator queries.
 - Sort expressions in `SORTS` must match the expression indexes in `scripts/migrations/*.sql`; apply them with `npm run db:migrate` (idempotent).
 
 Credits live in DynamoDB table `${StackName}-credits` (logic in `appsync/handlers/creators`: `helper/credits.js` costs/rules, `lib/credits.js`, `resolvers/credits.js`):
