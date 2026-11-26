@@ -138,11 +138,42 @@ type CreditCosts @aws_cognito_user_pools {
 }
 
 type CreditBalance @aws_cognito_user_pools {
-  "Spendable credits; 0 once expired."
+  "Total spendable credits (free + purchased)."
   balance: Int!
+  "Signup credits still valid; 0 once expired."
+  freeBalance: Int!
+  "Purchased credits; these never expire."
+  paidBalance: Int!
+  "When the free credits expire."
   expiresAt: AWSDateTime
+  "True once the free credits have expired."
   expired: Boolean!
   costs: CreditCosts!
+}
+
+type CreditOrder @aws_cognito_user_pools {
+  orderId: ID!
+  "Amount in paise."
+  amount: Int!
+  currency: String!
+  "Razorpay public key id for Checkout."
+  keyId: String!
+  packId: String!
+  packName: String!
+  credits: Int!
+  prefillName: String
+  prefillEmail: String
+  prefillContact: String
+}
+
+type CreditPurchaseResult @aws_cognito_user_pools {
+  orderId: ID!
+  packId: String!
+  packName: String!
+  creditsAdded: Int!
+  "True when the credits were already added (e.g. by the webhook)."
+  alreadyProcessed: Boolean!
+  credits: CreditBalance!
 }
 
 enum ContactField {
@@ -175,6 +206,10 @@ type Mutation {
   "Costs credits the first time a creator's profile is opened."
   openCreatorProfile(id: ID!): CreatorProfile! @aws_cognito_user_pools
   revealCreatorContact(creatorId: ID!, field: ContactField!): ContactReveal! @aws_cognito_user_pools
+  "Starts a Razorpay payment for a credit pack (starter, growth, pro, agency)."
+  createCreditOrder(packId: String!): CreditOrder! @aws_cognito_user_pools
+  "Verifies the Checkout signature and adds the pack's credits. Idempotent."
+  verifyCreditPayment(orderId: ID!, paymentId: String!, signature: String!): CreditPurchaseResult! @aws_cognito_user_pools
   createUserList(input: CreateUserListInput!): UserList! @aws_cognito_user_pools
   updateUserList(id: ID!, input: UpdateUserListInput!): UserList! @aws_cognito_user_pools
   deleteUserList(id: ID!): Boolean! @aws_cognito_user_pools

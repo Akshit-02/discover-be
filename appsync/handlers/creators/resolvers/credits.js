@@ -35,15 +35,22 @@ const contactValue = (row, field) => {
 const revealedValue = (unlock, row, field) => unlock?.value || contactValue(row, field);
 
 /** Charges `cost` unless `sk` is already unlocked. Returns the credits actually charged. */
+const MAX_CHARGE_ATTEMPTS = 3;
+
 const spend = async ({ userId, sk, cost, reason, ref, expiresAt, unlocked, data }) => {
   if (unlocked) return 0;
-  const wallet = await ensureWallet(userId);
-  const outcome = await chargeForUnlock({ userId, sk, cost, reason, ref, expiresAt, data });
-  if (outcome === "insufficient") {
-    const { balance, expired } = toCreditBalance(wallet);
-    throw new InsufficientCreditsError({ required: cost, balance, expired });
+  let wallet = await ensureWallet(userId);
+  for (let attempt = 1; ; attempt++) {
+    const outcome = await chargeForUnlock({ userId, wallet, sk, cost, reason, ref, expiresAt, data });
+    if (outcome === "charged") return cost;
+    if (outcome === "already_unlocked") return 0;
+    // "conflict": the wallet changed under us (concurrent spend/top-up) — re-read and retry.
+    if (outcome === "insufficient" || attempt >= MAX_CHARGE_ATTEMPTS) {
+      const { balance, expired } = toCreditBalance(wallet);
+      throw new InsufficientCreditsError({ required: cost, balance, expired });
+    }
+    wallet = await getWallet(userId);
   }
-  return outcome === "charged" ? cost : 0;
 };
 
 const currentBalance = async (userId) => toCreditBalance(await getWallet(userId));

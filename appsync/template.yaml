@@ -47,6 +47,14 @@ Parameters:
   SupportMessagesTableName:
     Type: String
     Description: Name of the support messages DynamoDB table
+  RazorpayKeyId:
+    Type: String
+  RazorpayKeySecret:
+    Type: String
+    NoEcho: true
+  RazorpayWebhookSecret:
+    Type: String
+    NoEcho: true
 
 Resources:
   AppSyncLambdaInvokeRole:
@@ -116,6 +124,9 @@ Resources:
         NeonDatabaseUrl: !Ref NeonDatabaseUrl
         UsersTableName: !Ref UsersTableName
         CreditsTableName: !Ref CreditsTableName
+        RazorpayKeyId: !Ref RazorpayKeyId
+        RazorpayKeySecret: !Ref RazorpayKeySecret
+        RazorpayWebhookSecret: !Ref RazorpayWebhookSecret
 
   ListStack:
     Type: AWS::CloudFormation::Stack
@@ -157,3 +168,5 @@ Outputs:
     Value: !GetAtt GraphQLAPI.ApiId
   GraphQLApiUrl:
     Value: !GetAtt GraphQLAPI.GraphQLUrl
+  RazorpayWebhookUrl:
+    Value: !GetAtt CreatorStack.Outputs.RazorpayWebhookUrl

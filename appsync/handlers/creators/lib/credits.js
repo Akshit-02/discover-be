@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import {
   genericBatchGet,
+  genericCreate,
   genericCreateIfNotExists,
   genericGet,
   genericTransactWrite,
 } from "/opt/nodejs/dynamodb.js";
-import { SIGNUP_CREDITS, signupExpiry } from "../helper/credits.js";
+import { SIGNUP_CREDITS, signupExpiry, splitCost } from "../helper/credits.js";
 
 const { CREDITS_TABLE, USERS_TABLE } = process.env;
 
@@ -28,6 +29,7 @@ export const ensureWallet = async (userId) => {
       ...walletKey(userId),
       userId,
       balance: SIGNUP_CREDITS,
+      paidBalance: 0,
       granted: SIGNUP_CREDITS,
       expiresAt: signupExpiry(user?.createdAt || now),
       createdAt: now,
@@ -51,11 +53,19 @@ export const getActiveUnlocks = async (userId, sks) => {
 
 /**
  * Atomically deducts `cost`, records the unlock (with any extra `data`, e.g. the revealed value)
- * and a ledger row. Returns "charged", "already_unlocked" or "insufficient".
+ * and a ledger row. `wallet` is a fresh read used to split the cost between free and paid credits;
+ * the conditions re-check it, so a concurrent spend makes this return "conflict" (retry).
+ * Returns "charged", "already_unlocked", "insufficient" or "conflict".
  */
-export const chargeForUnlock = async ({ userId, sk, cost, reason, ref, expiresAt, data = {} }) => {
+export const chargeForUnlock = async ({ userId, wallet, sk, cost, reason, ref, expiresAt, data = {} }) => {
   const now = new Date();
   const nowIso = now.toISOString();
+  const split = splitCost(wallet, cost, now);
+  if (!split) return "insufficient";
+  const { fromFree, fromPaid } = split;
+  const walletConditions = ["balance >= :fromFree"];
+  if (fromFree > 0) walletConditions.push("expiresAt > :now");
+  if (fromPaid > 0) walletConditions.push("paidBalance >= :fromPaid");
   const pk = userKey(userId);
   const unlock = {
     ...data,
@@ -75,9 +85,10 @@ export const chargeForUnlock = async ({ userId, sk, cost, reason, ref, expiresAt
           Update: {
             TableName: CREDITS_TABLE,
             Key: walletKey(userId),
-            UpdateExpression: "SET balance = balance - :cost, updatedAt = :now",
-            ConditionExpression: "balance >= :cost AND expiresAt > :now",
-            ExpressionAttributeValues: { ":cost": cost, ":now": nowIso },
+            UpdateExpression:
+              "SET balance = balance - :fromFree, paidBalance = if_not_exists(paidBalance, :zero) - :fromPaid, updatedAt = :now",
+            ConditionExpression: walletConditions.join(" AND "),
+            ExpressionAttributeValues: { ":fromFree": fromFree, ":fromPaid": fromPaid, ":zero": 0, ":now": nowIso },
           },
         },
         {
@@ -96,6 +107,8 @@ export const chargeForUnlock = async ({ userId, sk, cost, reason, ref, expiresAt
               pk,
               sk: `TXN#${nowIso}#${randomUUID()}`,
               amount: -cost,
+              fromFree,
+              fromPaid,
               reason,
               ref,
               createdAt: nowIso,
@@ -110,7 +123,80 @@ export const chargeForUnlock = async ({ userId, sk, cost, reason, ref, expiresAt
     const reasons = error.CancellationReasons || [];
     // A concurrent request already unlocked it: nothing to pay.
     if (reasons[1]?.Code === "ConditionalCheckFailed") return "already_unlocked";
-    if (reasons[0]?.Code === "ConditionalCheckFailed") return "insufficient";
+    if (reasons[0]?.Code === "ConditionalCheckFailed") return "conflict";
+    throw error;
+  }
+};
+
+const orderKey = (userId, orderId) => ({ pk: userKey(userId), sk: `ORDER#${orderId}` });
+
+export const getOrder = (userId, orderId) => genericGet({ tableName: CREDITS_TABLE, key: orderKey(userId, orderId) });
+
+export const createOrderRecord = (order) =>
+  genericCreate({ tableName: CREDITS_TABLE, item: { ...orderKey(order.userId, order.orderId), ...order } });
+
+/**
+ * Marks a CREATED order PAID and adds its credits to the non-expiring paid balance, in one
+ * transaction. Safe to call twice (browser verify + webhook): returns "fulfilled" once,
+ * then "already_paid". Returns "not_found" for unknown orders.
+ */
+export const fulfilOrder = async ({ userId, orderId, paymentId, source }) => {
+  const order = await getOrder(userId, orderId);
+  if (!order) return { outcome: "not_found" };
+  if (order.status === "PAID") return { outcome: "already_paid", order };
+
+  await ensureWallet(userId);
+  const nowIso = new Date().toISOString();
+  try {
+    await genericTransactWrite({
+      items: [
+        {
+          Update: {
+            TableName: CREDITS_TABLE,
+            Key: orderKey(userId, orderId),
+            UpdateExpression: "SET #status = :paid, paymentId = :paymentId, paidAt = :now, paidVia = :source",
+            ConditionExpression: "#status = :created",
+            ExpressionAttributeNames: { "#status": "status" },
+            ExpressionAttributeValues: {
+              ":paid": "PAID",
+              ":created": "CREATED",
+              ":paymentId": paymentId,
+              ":now": nowIso,
+              ":source": source,
+            },
+          },
+        },
+        {
+          Update: {
+            TableName: CREDITS_TABLE,
+            Key: walletKey(userId),
+            UpdateExpression: "SET paidBalance = if_not_exists(paidBalance, :zero) + :credits, updatedAt = :now",
+            ExpressionAttributeValues: { ":credits": order.credits, ":zero": 0, ":now": nowIso },
+          },
+        },
+        {
+          Put: {
+            TableName: CREDITS_TABLE,
+            Item: {
+              pk: userKey(userId),
+              sk: `TXN#${nowIso}#${randomUUID()}`,
+              amount: order.credits,
+              reason: "PURCHASE",
+              ref: orderId,
+              packId: order.packId,
+              amountPaise: order.amountPaise,
+              paymentId,
+              createdAt: nowIso,
+            },
+          },
+        },
+      ],
+    });
+    return { outcome: "fulfilled", order };
+  } catch (error) {
+    if (error.name === "TransactionCanceledException" && error.CancellationReasons?.[0]?.Code === "ConditionalCheckFailed") {
+      return { outcome: "already_paid", order };
+    }
     throw error;
   }
 };

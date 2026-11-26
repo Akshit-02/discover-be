@@ -5,6 +5,7 @@ import {
   openCreatorProfileHandler,
   revealCreatorContactHandler,
 } from "./resolvers/credits.js";
+import { createCreditOrderHandler, verifyCreditPaymentHandler } from "./resolvers/payments.js";
 import { InsufficientCreditsError } from "./helper/credits.js";
 
 const routes = {
@@ -13,6 +14,8 @@ const routes = {
   myCredits: myCreditsHandler,
   openCreatorProfile: openCreatorProfileHandler,
   revealCreatorContact: revealCreatorContactHandler,
+  createCreditOrder: createCreditOrderHandler,
+  verifyCreditPayment: verifyCreditPaymentHandler,
 };
 
 export const handler = async (event) => {

@@ -6,7 +6,7 @@ Influencer Discovery Backend — AWS SAM app (nested stacks) modelled on `myw-br
 
 - `npm install` once, then `node mergeSchemas.js` — merges `appsync/schemas/*.graphql` into `appsync/schema.graphql`. Run before every `sam build`. Never hand-edit `appsync/schema.graphql`.
 - `sam validate --lint`, `sam build`
-- `bash deploy/master.sh` — uses the `briggomediatech` AWS profile; needs `NEON_DATABASE_URL` (env var or `.env.master`, gitignored) which is passed as the `NeonDatabaseUrl` parameter.
+- `bash deploy/master.sh` — uses the `briggomediatech` AWS profile; needs `NEON_DATABASE_URL`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and optionally `RAZORPAY_WEBHOOK_SECRET` (env vars or `.env.master`, gitignored), passed as stack parameters.
 
 ## Architecture
 
@@ -27,6 +27,8 @@ Credits live in DynamoDB table `${StackName}-credits` (logic in `appsync/handler
 - Costs: advanced filter set 2 (hash of the non-basic filter fields; same set free for 24h via an expiring unlock), open profile 1, reveal email 1, reveal phone 2. Unlocks `sk=UNLOCK#<KIND>#<ref>` make repeats free; missing contacts are never charged.
 - `chargeForUnlock` is one transaction: conditional wallet decrement + unlock put + ledger row `sk=TXN#...`.
 - Creator rows never include `email`/`phone` (only `hasEmail`/`hasPhone`); values come only from `revealCreatorContact` / `openCreatorProfile`.
+- Wallet has two buckets: `balance` (free signup credits, expire at `expiresAt`) and `paidBalance` (purchased, never expire). Charges spend free first, then paid (`helper/credits.js` `splitCost`); the ledger row records `fromFree`/`fromPaid`. A concurrent wallet change makes the conditional update fail and `spend` retries with a fresh read.
+- Purchases (Razorpay): `createCreditOrder(packId)` creates a Razorpay order at the server-side price in `helper/payments.js` `CREDIT_PACKS` (keep `src/lib/constants/creditPacks.ts` in the frontend in sync) and stores `sk=ORDER#<orderId>` (status CREATED). `verifyCreditPayment` checks the Checkout HMAC signature with the key secret, then `fulfilOrder` marks the order PAID and adds credits to `paidBalance` in one transaction (idempotent). `webhook.js` (Lambda function URL, output `RazorpayWebhookUrl`) handles `order.paid` with the webhook secret, so tabs closed mid-payment still get credited. Keys come from `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` in `.env.master`.
 - Insufficient credits returns `{ __error }` from the Lambda, which the creator stack's resolver turns into GraphQL errorType `InsufficientCredits`.
 
 Help & support messages live in DynamoDB table `${StackName}-support-messages` (handler `appsync/handlers/support`, stack `appsync/stacks/supportStack.yaml`): `pk=USER#<userId>`, `sk=MSG#<createdAt>#<id>`, with `type` (SUGGESTION/FEEDBACK/QUERY/BUG), `subject`, `message`, `status` (OPEN/IN_PROGRESS/RESOLVED), plus the sender's email/name/company copied from the users table. GSI `byStatus` (`status`, `createdAt`) is for triaging open messages. Max 10 messages per user per 24h.

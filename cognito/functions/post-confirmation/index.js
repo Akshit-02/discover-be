@@ -43,6 +43,7 @@ export const handler = async (event) => {
         sk: "WALLET",
         userId: userPayload.id,
         balance: SIGNUP_CREDITS,
+        paidBalance: 0,
         granted: SIGNUP_CREDITS,
         expiresAt: new Date(Date.parse(now) + SIGNUP_CREDIT_DAYS * 86_400_000).toISOString(),
         createdAt: now,

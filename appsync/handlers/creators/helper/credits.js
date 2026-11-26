@@ -23,9 +23,9 @@ export const unlockSk = (kind, ref) => `UNLOCK#${kind}#${ref}`;
 export class InsufficientCreditsError extends Error {
   constructor({ required, balance, expired }) {
     super(
-      expired
-        ? "Your credits have expired. Top up to keep using this feature."
-        : `This needs ${required} credit${required === 1 ? "" : "s"} and you have ${balance}. Top up to continue.`,
+      expired && !balance
+        ? "Your free credits have expired. Buy a credit pack to keep using this feature."
+        : `This needs ${required} credit${required === 1 ? "" : "s"} and you have ${balance}. Buy a credit pack to continue.`,
     );
     this.name = "InsufficientCredits";
     this.info = { required, balance, expired };
@@ -41,12 +41,32 @@ export const signupExpiry = (createdAt) => {
 export const isExpired = (wallet, now = new Date()) =>
   !wallet?.expiresAt || Date.parse(wallet.expiresAt) <= now.getTime();
 
+const nonNegative = (value) => Math.max(Number(value) || 0, 0);
+
+/** Free (signup) credits expire at `expiresAt`; purchased credits (`paidBalance`) never expire. */
+export const spendable = (wallet, now = new Date()) => {
+  const free = isExpired(wallet, now) ? 0 : nonNegative(wallet?.balance);
+  const paid = nonNegative(wallet?.paidBalance);
+  return { free, paid, total: free + paid };
+};
+
+/** Free credits are spent first because they expire. Returns null when the wallet can't cover `cost`. */
+export const splitCost = (wallet, cost, now = new Date()) => {
+  const { free, paid } = spendable(wallet, now);
+  const fromFree = Math.min(cost, free);
+  const fromPaid = cost - fromFree;
+  return fromPaid > paid ? null : { fromFree, fromPaid };
+};
+
 export const toCreditBalance = (wallet, now = new Date()) => {
-  const expired = isExpired(wallet, now);
+  const { free, paid, total } = spendable(wallet, now);
   return {
-    balance: expired ? 0 : Math.max(Number(wallet?.balance) || 0, 0),
+    balance: total,
+    freeBalance: free,
+    paidBalance: paid,
     expiresAt: wallet?.expiresAt || null,
-    expired,
+    // Free credits have expired (purchased credits are unaffected).
+    expired: isExpired(wallet, now),
     costs: COSTS,
   };
 };

@@ -26,6 +26,18 @@ Parameters:
     Type: String
     NoEcho: true
     Description: Neon Postgres connection string
+  RazorpayKeyId:
+    Type: String
+    Description: Razorpay key id (public, used by Checkout)
+  RazorpayKeySecret:
+    Type: String
+    NoEcho: true
+    Description: Razorpay key secret
+  RazorpayWebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Razorpay webhook secret (order.paid); webhook rejects everything while empty
 
 Resources:
   LambdaRole:
@@ -94,6 +106,9 @@ Resources:
         NeonDatabaseUrl: !Ref NeonDatabaseUrl
         UserListsTableName: !GetAtt DynamoDB.Outputs.UserListsTableName
         CreditsTableName: !GetAtt DynamoDB.Outputs.CreditsTableName
+        RazorpayKeyId: !Ref RazorpayKeyId
+        RazorpayKeySecret: !Ref RazorpayKeySecret
+        RazorpayWebhookSecret: !Ref RazorpayWebhookSecret
         SupportMessagesTableName: !GetAtt DynamoDB.Outputs.SupportMessagesTableName
 
 Outputs:
@@ -103,6 +118,9 @@ Outputs:
     Value: !GetAtt Cognito.Outputs.UserPoolClientId
   GraphQLApiUrl:
     Value: !GetAtt AppSync.Outputs.GraphQLApiUrl
+  RazorpayWebhookUrl:
+    Description: Add this URL in Razorpay Dashboard → Webhooks (event order.paid)
+    Value: !GetAtt AppSync.Outputs.RazorpayWebhookUrl
   UsersTableName:
     Value: !GetAtt DynamoDB.Outputs.UsersTableName
   UserListsTableName:

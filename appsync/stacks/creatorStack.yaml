@@ -30,6 +30,14 @@ Parameters:
     Type: String
   CreditsTableName:
     Type: String
+  RazorpayKeyId:
+    Type: String
+  RazorpayKeySecret:
+    Type: String
+    NoEcho: true
+  RazorpayWebhookSecret:
+    Type: String
+    NoEcho: true
 
 # Define reusables with anchors
 Metadata:
@@ -96,6 +104,8 @@ Resources:
           DATABASE_URL: !Ref NeonDatabaseUrl
           USERS_TABLE: !Ref UsersTableName
           CREDITS_TABLE: !Ref CreditsTableName
+          RAZORPAY_KEY_ID: !Ref RazorpayKeyId
+          RAZORPAY_KEY_SECRET: !Ref RazorpayKeySecret
 
   CreatorsDataSource:
     Type: AWS::AppSync::DataSource
@@ -156,3 +166,58 @@ Resources:
       DataSourceName: !GetAtt CreatorsDataSource.Name
       Runtime: *ResolverRuntime
       Code: *ResolverCode
+
+  CreateCreditOrderResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: createCreditOrder
+      DataSourceName: !GetAtt CreatorsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  VerifyCreditPaymentResolver:
+    Type: AWS::AppSync::Resolver
+    Properties:
+      ApiId: !Ref GraphQLAPI
+      TypeName: Mutation
+      FieldName: verifyCreditPayment
+      DataSourceName: !GetAtt CreatorsDataSource.Name
+      Runtime: *ResolverRuntime
+      Code: *ResolverCode
+
+  RazorpayWebhookFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${StackName}-razorpay-webhook"
+      RetentionInDays: 14
+
+  # Public URL for Razorpay webhooks; every request is authenticated by its HMAC signature.
+  RazorpayWebhookFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: RazorpayWebhookFunctionLogGroup
+    Properties:
+      FunctionName: !Sub "${StackName}-razorpay-webhook"
+      CodeUri: ../handlers/creators
+      Handler: webhook.handler
+      Role: !Ref LambdaRoleArn
+      Runtime: nodejs22.x
+      MemorySize: 256
+      Timeout: 15
+      Layers:
+        - !Ref CommonLambdaLayer
+        - !Ref DynamoDBLayer
+        - !Ref UtilsLayer
+      Environment:
+        Variables:
+          LOG_LEVEL: !Ref LogLevel
+          USERS_TABLE: !Ref UsersTableName
+          CREDITS_TABLE: !Ref CreditsTableName
+          RAZORPAY_WEBHOOK_SECRET: !Ref RazorpayWebhookSecret
+      FunctionUrlConfig:
+        AuthType: NONE
+
+Outputs:
+  RazorpayWebhookUrl:
+    Value: !GetAtt RazorpayWebhookFunctionUrl.FunctionUrl
